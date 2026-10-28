@@ -4,8 +4,8 @@ import axios from 'axios';
 const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
 
-// const API_BASE_URL = 'http://localhost:8080/todolist/api/auth';
-const API_BASE_URL = 'http://localhost:8080/todolist/api/auth';
+// console.log(process.env.REACT_APP_API_URL);
+const API_BASE_URL = `${process.env.REACT_APP_API_URL}/todolist/api/auth`;
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -38,14 +38,28 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // const register = async (username, email, password) => {
+    //     try {
+    //         await axios.post(`${API_BASE_URL}/register`, { username, email, password });
+    //         return { success: true };
+    //     } catch (error) {
+    //         return { success: false, message: error.response?.data || 'Registration failed' };
+    //     }
+    // };
+
     const register = async (username, email, password) => {
-        try {
-            await axios.post(`${API_BASE_URL}/register`, { username, email, password });
-            return { success: true };
-        } catch (error) {
-            return { success: false, message: error.response?.data || 'Registration failed' };
-        }
-    };
+    console.log(' Register called with:', { username, email });
+    console.log('🔵 API URL:', `${API_BASE_URL}/register`);
+    
+    try {
+        const response = await axios.post(`${API_BASE_URL}/register`, { username, email, password });
+        console.log(' Registration successful:', response.data);
+        return { success: true };
+    } catch (error) {
+        console.error('🔴 Registration failed:', error.response?.data || error.message);
+        return { success: false, message: error.response?.data || 'Registration failed' };
+    }
+};
 
     const logout = () => {
         localStorage.removeItem('token');
@@ -55,9 +69,11 @@ export const AuthProvider = ({ children }) => {
         delete axios.defaults.headers.common['Authorization'];
     };
 
-    return (
+   return (
         <AuthContext.Provider value={{ user, login, register, logout, loading, isAuthenticated: !!user }}>
             {!loading && children}
         </AuthContext.Provider>
     );
 };
+
+export default AuthProvider;

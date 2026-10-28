@@ -3,11 +3,12 @@ import { useAuth } from './AuthContext';
 import {
     Container, TextField, Button, List, ListItem, ListItemText,
     Checkbox, IconButton, Typography, Box, Paper, AppBar,
-    Toolbar, CircularProgress, Alert, Snackbar
+    Toolbar, CircularProgress, Alert, Snackbar, Dialog,
+    DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
 import { Logout, Add, Delete, Edit, Save, Cancel, Visibility } from '@mui/icons-material';
 
-const TODO_API_URL = 'http://localhost:8080/todolist/api/todos';
+const TODO_API_URL = `${process.env.REACT_APP_API_URL}/todolist/api/todos`;
 
 const Dashboard = () => {
     const { user, logout } = useAuth();
@@ -31,6 +32,10 @@ const Dashboard = () => {
     const [editingId, setEditingId] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
+
+    // ✅ Delete confirmation dialog state
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [todoToDelete, setTodoToDelete] = useState(null);
 
     // Fetch todos only when "View Todos" is clicked
     const fetchTodos = async () => {
@@ -60,7 +65,7 @@ const Dashboard = () => {
             } else {
                 setTodos([]);
             }
-            setViewingTodos(true); // ✅ Now show the list
+            setViewingTodos(true); // shows the list
         } catch (error) {
             console.error('Error fetching todos:', error);
             setError('Failed to load todos: ' + error.message);
@@ -138,10 +143,17 @@ const Dashboard = () => {
         }
     };
 
-    const deleteTodo = async (id) => {
-        if (!window.confirm('Delete this todo?')) return;
+    // ✅ Opens the custom dialog - simplified, no event needed
+    const confirmDelete = (id) => {
+        setTodoToDelete(id);
+        setDeleteDialogOpen(true);
+    };
+
+    // ✅ Executes the actual deletion
+    const handleDelete = async () => {
+        if (!todoToDelete) return;
         try {
-            const response = await fetch(`${TODO_API_URL}/${id}`, {
+            const response = await fetch(`${TODO_API_URL}/${todoToDelete}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -157,7 +169,15 @@ const Dashboard = () => {
             }
         } catch (error) {
             console.error('Error deleting todo:', error);
+        } finally {
+            setDeleteDialogOpen(false);
+            setTodoToDelete(null);
         }
+    };
+
+    const handleCloseDeleteDialog = () => {
+        setDeleteDialogOpen(false);
+        setTodoToDelete(null);
     };
 
     const startEditing = (todo) => {
@@ -260,7 +280,6 @@ const Dashboard = () => {
                             >
                                 Add Todo
                             </Button>
-                            {/* ✅ "View Todos" button */}
                             <Button
                                 variant="outlined"
                                 onClick={fetchTodos}
@@ -273,7 +292,7 @@ const Dashboard = () => {
                     </Box>
                 </Paper>
 
-                {/* ✅ Only render todo list AFTER "View Todos" is clicked */}
+                {/* Only render todo list AFTER "View Todos" is clicked */}
                 {viewingTodos && (
                     <Paper elevation={3} sx={{ p: 3 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -309,7 +328,13 @@ const Dashboard = () => {
                                                     <IconButton edge="end" onClick={() => startEditing(todo)} size="small">
                                                         <Edit fontSize="small" />
                                                     </IconButton>
-                                                    <IconButton edge="end" onClick={() => deleteTodo(todo.id)} size="small">
+                                                    {/* ✅ Simplified - no event passing needed */}
+                                                    <IconButton
+                                                        edge="end"
+                                                        onClick={() => confirmDelete(todo.id)}
+                                                        size="small"
+                                                        color="error"
+                                                    >
                                                         <Delete fontSize="small" />
                                                     </IconButton>
                                                 </>
@@ -384,6 +409,32 @@ const Dashboard = () => {
                         {snackbar.message}
                     </Alert>
                 </Snackbar>
+
+                {/* ✅ Custom Delete Confirmation Dialog with disableRestoreFocus */}
+                <Dialog
+                    open={deleteDialogOpen}
+                    onClose={handleCloseDeleteDialog}
+                    aria-labelledby="delete-dialog-title"
+                    aria-describedby="delete-dialog-description"
+                    disableRestoreFocus
+                >
+                    <DialogTitle id="delete-dialog-title">
+                        Delete Todo?
+                    </DialogTitle>
+                    <DialogContent>
+                        <DialogContentText id="delete-dialog-description">
+                            Are you sure you want to delete this todo? This action cannot be undone.
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={handleCloseDeleteDialog} color="inherit">
+                            Cancel
+                        </Button>
+                        <Button onClick={handleDelete} color="error" variant="contained" autoFocus>
+                            Delete
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Container>
         </>
     );
